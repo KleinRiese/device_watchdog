@@ -15,21 +15,20 @@ from .const import (
 )
 
 
-def _build_main_schema(entities=None, scan_interval=DEFAULT_SCAN_INTERVAL) -> vol.Schema:
-    return vol.Schema(
-        {
-            vol.Required(CONF_ENTITIES, default=entities or []): selector.EntitySelector(
-                selector.EntitySelectorConfig(multiple=True)
-            ),
-            vol.Required(CONF_SCAN_INTERVAL, default=scan_interval): selector.NumberSelector(
-                selector.NumberSelectorConfig(
-                    min=5,
-                    max=3600,
-                    step=5,
-                    mode=selector.NumberSelectorMode.BOX,
-                )
-            ),
-        }
+def _entity_selector(default=None):
+    return selector.EntitySelector(
+        selector.EntitySelectorConfig(multiple=True)
+    )
+
+
+def _number_selector(min_value, max_value, step=5):
+    return selector.NumberSelector(
+        selector.NumberSelectorConfig(
+            min=min_value,
+            max=max_value,
+            step=step,
+            mode=selector.NumberSelectorMode.BOX,
+        )
     )
 
 
@@ -40,7 +39,12 @@ class DeviceWatchdogConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         if user_input is None:
             return self.async_show_form(
                 step_id="user",
-                data_schema=_build_main_schema(),
+                data_schema=vol.Schema(
+                    {
+                        vol.Required(CONF_ENTITIES, default=[]): _entity_selector(),
+                        vol.Required(CONF_SCAN_INTERVAL, default=DEFAULT_SCAN_INTERVAL): _number_selector(5, 3600),
+                    }
+                ),
             )
 
         entities = list(user_input[CONF_ENTITIES])
@@ -62,14 +66,14 @@ class DeviceWatchdogConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
 class DeviceWatchdogOptionsFlow(config_entries.OptionsFlow):
     async def async_step_init(self, user_input=None):
-        entities = list(self.config_entry.data.get(CONF_ENTITIES, []))
-        timeouts = dict(
+        current_entities = list(self.config_entry.data.get(CONF_ENTITIES, []))
+        current_timeouts = dict(
             self.config_entry.options.get(
                 CONF_TIMEOUTS,
                 self.config_entry.data.get(CONF_TIMEOUTS, {}),
             )
         )
-        scan_interval = int(
+        current_scan_interval = int(
             self.config_entry.options.get(
                 CONF_SCAN_INTERVAL,
                 self.config_entry.data.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL),
@@ -94,32 +98,19 @@ class DeviceWatchdogOptionsFlow(config_entries.OptionsFlow):
             )
 
         schema = {
-            vol.Required(CONF_ENTITIES, default=entities): selector.EntitySelector(
-                selector.EntitySelectorConfig(multiple=True)
-            ),
-            vol.Required(CONF_SCAN_INTERVAL, default=scan_interval): selector.NumberSelector(
-                selector.NumberSelectorConfig(
-                    min=5,
-                    max=3600,
-                    step=5,
-                    mode=selector.NumberSelectorMode.BOX,
-                )
-            ),
+            vol.Required(CONF_ENTITIES, default=current_entities): _entity_selector(),
+            vol.Required(CONF_SCAN_INTERVAL, default=current_scan_interval): _number_selector(5, 3600),
         }
 
-        for entity_id in entities:
+        for entity_id in current_entities:
             schema[
                 vol.Required(
                     f"timeout__{entity_id}",
-                    default=int(timeouts.get(entity_id, DEFAULT_TIMEOUT)),
+                    default=int(current_timeouts.get(entity_id, DEFAULT_TIMEOUT)),
                 )
-            ] = selector.NumberSelector(
-                selector.NumberSelectorConfig(
-                    min=5,
-                    max=86400,
-                    step=5,
-                    mode=selector.NumberSelectorMode.BOX,
-                )
-            )
+            ] = _number_selector(5, 86400)
 
-        return self.async_show_form(step_id="init", data_schema=vol.Schema(schema))
+        return self.async_show_form(
+            step_id="init",
+            data_schema=vol.Schema(schema),
+        )
