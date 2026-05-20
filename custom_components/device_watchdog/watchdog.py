@@ -14,8 +14,8 @@ from .const import (
     CONF_ENTITIES,
     CONF_SCAN_INTERVAL,
     CONF_TIMEOUTS,
-    DEFAULT_SCAN_INTERVAL,
-    DEFAULT_TIMEOUT,
+    DEFAULT_SCAN_INTERVAL_MINUTES,
+    DEFAULT_TIMEOUT_MINUTES,
     DOMAIN,
 )
 
@@ -33,20 +33,20 @@ class WatchdogManager:
         self.entry = entry
         self.entities: list[str] = []
         self.timeouts: dict[str, int] = {}
-        self.scan_interval: int = DEFAULT_SCAN_INTERVAL
+        self.scan_interval_minutes: int = DEFAULT_SCAN_INTERVAL_MINUTES
         self.state = WatchdogState()
         self._unsub_state: Callable[[], None] | None = None
         self._ready = False
-
         self._load_from_entry(entry)
 
     def _load_from_entry(self, entry: ConfigEntry) -> None:
         self.entities = list(entry.options.get(CONF_ENTITIES, entry.data.get(CONF_ENTITIES, [])))
         self.timeouts = dict(entry.options.get(CONF_TIMEOUTS, entry.data.get(CONF_TIMEOUTS, {})))
-        self.scan_interval = int(entry.options.get(CONF_SCAN_INTERVAL, entry.data.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)))
-
+        self.scan_interval_minutes = int(
+            entry.options.get(CONF_SCAN_INTERVAL, entry.data.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL_MINUTES))
+        )
         for entity_id in self.entities:
-            self.timeouts.setdefault(entity_id, DEFAULT_TIMEOUT)
+            self.timeouts.setdefault(entity_id, DEFAULT_TIMEOUT_MINUTES)
 
     async def async_start(self) -> None:
         await self._restart_state_listener()
@@ -96,7 +96,7 @@ class WatchdogManager:
         )
 
     def _effective_timeout(self, entity_id: str) -> int:
-        return int(self.timeouts.get(entity_id, DEFAULT_TIMEOUT))
+        return int(self.timeouts.get(entity_id, DEFAULT_TIMEOUT_MINUTES))
 
     async def async_check_all(self) -> None:
         now = datetime.now(timezone.utc)
@@ -108,7 +108,7 @@ class WatchdogManager:
                 self.state.last_updates[entity_id] = now
                 last_update = now
 
-            timeout = timedelta(seconds=self._effective_timeout(entity_id))
+            timeout = timedelta(minutes=self._effective_timeout(entity_id))
             if now - last_update > timeout:
                 failed.append(entity_id)
 

@@ -4,10 +4,10 @@
     "step": {
       "user": {
         "title": "Set up Device Watchdog",
-        "description": "Choose the entities to monitor and the scan interval.",
+        "description": "Choose the entities to monitor and the intervals in minutes.",
         "data": {
           "entities": "Entities",
-          "scan_interval": "Scan interval"
+          "scan_interval": "Scan interval (minutes)"
         }
       }
     }
@@ -16,11 +16,15 @@
     "step": {
       "init": {
         "title": "Device Watchdog options",
-        "description": "Adjust entities and timeout values.",
+        "description": "Change entities and scan interval.",
         "data": {
           "entities": "Entities",
-          "scan_interval": "Scan interval"
+          "scan_interval": "Scan interval (minutes)"
         }
+      },
+      "timeouts": {
+        "title": "Timeouts per entity",
+        "description": "Set the monitoring timeout in minutes for each entity."
       }
     }
   }

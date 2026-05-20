@@ -4,10 +4,10 @@
     "step": {
       "user": {
         "title": "Device Watchdog einrichten",
-        "description": "Wähle die zu überwachenden Entitäten und das Prüfintervall.",
+        "description": "Wähle die zu überwachenden Entitäten und die Intervalle in Minuten.",
         "data": {
           "entities": "Entitäten",
-          "scan_interval": "Prüfintervall"
+          "scan_interval": "Prüfintervall (Minuten)"
         }
       }
     }
@@ -16,11 +16,15 @@
     "step": {
       "init": {
         "title": "Device Watchdog Optionen",
-        "description": "Entitäten und Timeout-Werte anpassen.",
+        "description": "Entitäten und Prüfintervall ändern.",
         "data": {
           "entities": "Entitäten",
-          "scan_interval": "Prüfintervall"
+          "scan_interval": "Prüfintervall (Minuten)"
         }
+      },
+      "timeouts": {
+        "title": "Timeouts pro Entität",
+        "description": "Lege für jede Entität die Überwachungszeit in Minuten fest."
       }
     }
   }
