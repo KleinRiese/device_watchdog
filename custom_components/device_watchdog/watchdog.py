@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
-from typing import Any, Callable
+from typing import Callable
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import Event, HomeAssistant, callback
@@ -18,6 +18,7 @@ from .const import (
     DEFAULT_TIMEOUT,
     DOMAIN,
 )
+
 
 @dataclass
 class WatchdogState:
@@ -124,11 +125,6 @@ class WatchdogManager:
                 },
             },
         )
-
-    async def async_time_check(self, _now) -> None:
-        if not self._ready:
-            return
-        await self.async_check_all()
 
     async def async_force_check(self) -> None:
         await self.async_check_all()

@@ -7,11 +7,13 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import ATTR_FAILED_ENTITIES, DOMAIN
 
+
 ENTITY_DESCRIPTION = BinarySensorEntityDescription(
     key="device_watchdog_alarm",
     name="Alarm",
     device_class="problem",
 )
+
 
 async def async_setup_entry(
     hass: HomeAssistant,

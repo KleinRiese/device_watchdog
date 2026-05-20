@@ -1,11 +1,12 @@
 from __future__ import annotations
 
-from homeassistant.components.sensor import SensorEntity, SensorDeviceClass, SensorStateClass
+from homeassistant.components.sensor import SensorEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import ATTR_FAILED_ENTITIES, ATTR_LAST_UPDATES, DOMAIN
+
 
 async def async_setup_entry(
     hass: HomeAssistant,
@@ -18,13 +19,11 @@ async def async_setup_entry(
 
 class DeviceWatchdogSummarySensor(SensorEntity):
     _attr_has_entity_name = True
-    _attr_device_class = SensorDeviceClass.ENUM
-    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_name = "Summary"
 
     def __init__(self, manager, entry_id: str) -> None:
         self.manager = manager
         self._attr_unique_id = f"{DOMAIN}_{entry_id}_summary"
-        self._attr_name = "Summary"
 
     @property
     def native_value(self):
