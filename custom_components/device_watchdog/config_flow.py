@@ -15,7 +15,7 @@ from .const import (
 )
 
 
-def _entity_selector(default=None):
+def _entity_selector():
     return selector.EntitySelector(
         selector.EntitySelectorConfig(multiple=True)
     )
@@ -66,11 +66,10 @@ class DeviceWatchdogConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
 class DeviceWatchdogOptionsFlow(config_entries.OptionsFlow):
     async def async_step_init(self, user_input=None):
-        current_entities = list(self.config_entry.data.get(CONF_ENTITIES, []))
-        current_timeouts = dict(
+        current_entities = list(
             self.config_entry.options.get(
-                CONF_TIMEOUTS,
-                self.config_entry.data.get(CONF_TIMEOUTS, {}),
+                CONF_ENTITIES,
+                self.config_entry.data.get(CONF_ENTITIES, []),
             )
         )
         current_scan_interval = int(
@@ -84,25 +83,46 @@ class DeviceWatchdogOptionsFlow(config_entries.OptionsFlow):
             new_entities = list(user_input[CONF_ENTITIES])
             new_scan_interval = int(user_input[CONF_SCAN_INTERVAL])
 
-            new_timeouts = {
-                entity_id: int(user_input.get(f"timeout__{entity_id}", DEFAULT_TIMEOUT))
-                for entity_id in new_entities
-            }
-
             return self.async_create_entry(
                 data={
                     CONF_ENTITIES: new_entities,
-                    CONF_TIMEOUTS: new_timeouts,
                     CONF_SCAN_INTERVAL: new_scan_interval,
                 }
             )
 
-        schema = {
-            vol.Required(CONF_ENTITIES, default=current_entities): _entity_selector(),
-            vol.Required(CONF_SCAN_INTERVAL, default=current_scan_interval): _number_selector(5, 3600),
-        }
+        return self.async_show_form(
+            step_id="init",
+            data_schema=vol.Schema(
+                {
+                    vol.Required(CONF_ENTITIES, default=current_entities): _entity_selector(),
+                    vol.Required(CONF_SCAN_INTERVAL, default=current_scan_interval): _number_selector(5, 3600),
+                }
+            ),
+        )
 
-        for entity_id in current_entities:
+    async def async_step_timeouts(self, user_input=None):
+        entities = list(self.config_entry.options.get(CONF_ENTITIES, self.config_entry.data.get(CONF_ENTITIES, [])))
+        current_timeouts = dict(
+            self.config_entry.options.get(
+                CONF_TIMEOUTS,
+                self.config_entry.data.get(CONF_TIMEOUTS, {}),
+            )
+        )
+
+        if user_input is not None:
+            new_timeouts = {
+                entity_id: int(user_input[f"timeout__{entity_id}"])
+                for entity_id in entities
+            }
+
+            return self.async_create_entry(
+                data={
+                    CONF_TIMEOUTS: new_timeouts,
+                }
+            )
+
+        schema = {}
+        for entity_id in entities:
             schema[
                 vol.Required(
                     f"timeout__{entity_id}",
@@ -111,6 +131,6 @@ class DeviceWatchdogOptionsFlow(config_entries.OptionsFlow):
             ] = _number_selector(5, 86400)
 
         return self.async_show_form(
-            step_id="init",
+            step_id="timeouts",
             data_schema=vol.Schema(schema),
         )
