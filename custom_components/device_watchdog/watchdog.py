@@ -6,7 +6,7 @@ from typing import Callable
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import Event, HomeAssistant, callback
-from homeassistant.helpers.event import async_track_state_change_event
+from homeassistant.helpers.event import async_track_state_change_event, async_track_time_interval
 
 from .const import (
     ATTR_FAILED_ENTITIES,
@@ -36,6 +36,7 @@ class WatchdogManager:
         self.scan_interval_minutes: int = DEFAULT_SCAN_INTERVAL_MINUTES
         self.state = WatchdogState()
         self._unsub_state: Callable[[], None] | None = None
+        self._unsub_interval: Callable[[], None] | None = None
         self._ready = False
         self._load_from_entry(entry)
 
@@ -43,13 +44,16 @@ class WatchdogManager:
         self.entities = list(entry.options.get(CONF_ENTITIES, entry.data.get(CONF_ENTITIES, [])))
         self.timeouts = dict(entry.options.get(CONF_TIMEOUTS, entry.data.get(CONF_TIMEOUTS, {})))
         self.scan_interval_minutes = int(
-            entry.options.get(CONF_SCAN_INTERVAL, entry.data.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL_MINUTES))
+            entry.options.get(
+                CONF_SCAN_INTERVAL,
+                entry.data.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL_MINUTES),
+            )
         )
         for entity_id in self.entities:
             self.timeouts.setdefault(entity_id, DEFAULT_TIMEOUT_MINUTES)
 
     async def async_start(self) -> None:
-        await self._restart_state_listener()
+        await self._restart_listeners()
         self._ready = True
         await self.async_check_all()
 
@@ -62,17 +66,29 @@ class WatchdogManager:
         if self._unsub_state:
             self._unsub_state()
             self._unsub_state = None
+        if self._unsub_interval:
+            self._unsub_interval()
+            self._unsub_interval = None
         self._ready = False
 
-    async def _restart_state_listener(self) -> None:
+    async def _restart_listeners(self) -> None:
         if self._unsub_state:
             self._unsub_state()
             self._unsub_state = None
+        if self._unsub_interval:
+            self._unsub_interval()
+            self._unsub_interval = None
 
         self._unsub_state = async_track_state_change_event(
             self.hass,
             self.entities,
             self._async_on_state_change,
+        )
+
+        self._unsub_interval = async_track_time_interval(
+            self.hass,
+            self._async_interval_check,
+            timedelta(minutes=self.scan_interval_minutes),
         )
 
     @callback
@@ -94,6 +110,10 @@ class WatchdogManager:
                 ATTR_FAILED_ENTITIES: list(self.state.failed_entities),
             },
         )
+
+    @callback
+    def _async_interval_check(self, now: datetime) -> None:
+        self.hass.async_create_task(self.async_check_all())
 
     def _effective_timeout(self, entity_id: str) -> int:
         return int(self.timeouts.get(entity_id, DEFAULT_TIMEOUT_MINUTES))
