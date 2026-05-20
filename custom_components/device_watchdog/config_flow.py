@@ -67,28 +67,16 @@ class DeviceWatchdogConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 class DeviceWatchdogOptionsFlow(config_entries.OptionsFlow):
     async def async_step_init(self, user_input=None):
         current_entities = list(
-            self.config_entry.options.get(
-                CONF_ENTITIES,
-                self.config_entry.data.get(CONF_ENTITIES, []),
-            )
+            self.config_entry.options.get(CONF_ENTITIES, self.config_entry.data.get(CONF_ENTITIES, []))
         )
         current_scan_interval = int(
-            self.config_entry.options.get(
-                CONF_SCAN_INTERVAL,
-                self.config_entry.data.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL),
-            )
+            self.config_entry.options.get(CONF_SCAN_INTERVAL, self.config_entry.data.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL))
         )
 
         if user_input is not None:
-            new_entities = list(user_input[CONF_ENTITIES])
-            new_scan_interval = int(user_input[CONF_SCAN_INTERVAL])
-
-            return self.async_create_entry(
-                data={
-                    CONF_ENTITIES: new_entities,
-                    CONF_SCAN_INTERVAL: new_scan_interval,
-                }
-            )
+            self._entities = list(user_input[CONF_ENTITIES])
+            self._scan_interval = int(user_input[CONF_SCAN_INTERVAL])
+            return await self.async_step_timeouts()
 
         return self.async_show_form(
             step_id="init",
@@ -101,12 +89,9 @@ class DeviceWatchdogOptionsFlow(config_entries.OptionsFlow):
         )
 
     async def async_step_timeouts(self, user_input=None):
-        entities = list(self.config_entry.options.get(CONF_ENTITIES, self.config_entry.data.get(CONF_ENTITIES, [])))
+        entities = getattr(self, "_entities", list(self.config_entry.options.get(CONF_ENTITIES, self.config_entry.data.get(CONF_ENTITIES, []))))
         current_timeouts = dict(
-            self.config_entry.options.get(
-                CONF_TIMEOUTS,
-                self.config_entry.data.get(CONF_TIMEOUTS, {}),
-            )
+            self.config_entry.options.get(CONF_TIMEOUTS, self.config_entry.data.get(CONF_TIMEOUTS, {}))
         )
 
         if user_input is not None:
@@ -117,7 +102,9 @@ class DeviceWatchdogOptionsFlow(config_entries.OptionsFlow):
 
             return self.async_create_entry(
                 data={
+                    CONF_ENTITIES: entities,
                     CONF_TIMEOUTS: new_timeouts,
+                    CONF_SCAN_INTERVAL: getattr(self, "_scan_interval", int(self.config_entry.options.get(CONF_SCAN_INTERVAL, self.config_entry.data.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)))),
                 }
             )
 
